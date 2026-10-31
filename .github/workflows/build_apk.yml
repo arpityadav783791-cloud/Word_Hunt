@@ -34,6 +34,10 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
+      - name: Configure Gradle memory
+        run: |
+          sed -i 's|^org.gradle.jvmargs=.*|org.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m -Dfile.encoding=UTF-8|' android/gradle.properties
+
       - name: Build release APK
         run: flutter build apk --release
         env:
