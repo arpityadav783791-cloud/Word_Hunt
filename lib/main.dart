@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'data/shared_preferences_progress_repository.dart';
 import 'screens/welcome_screen.dart';
 import 'services/progress_service.dart';
@@ -32,15 +33,26 @@ class _WordHuntAppState extends State<WordHuntApp> {
     builder: (context, _) => MaterialApp(
       title: 'Word Hunt',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF4776E6), brightness: Brightness.light)),
-      darkTheme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF4776E6), brightness: Brightness.dark)),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4776E6),
+          brightness: Brightness.light,
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4776E6),
+          brightness: Brightness.dark,
+        ),
+      ),
       themeMode: widget.theme.themeMode,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(widget.theme.textScale)),
-        child: child ?? const SizedBox.shrink()),
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(widget.theme.textScale)),
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: WelcomeScreen(progress: widget.progress, theme: widget.theme),
     ),
   );

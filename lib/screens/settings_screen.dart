@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'about_developer_screen.dart';
 import '../models/difficulty_config.dart';
 import '../services/progress_service.dart';
 import '../services/theme_controller.dart';
@@ -189,18 +190,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               future: widget.progress.loadProgress(),
               builder: (context, snapshot) {
                 final p = snapshot.data;
-                if (p == null){
-                   return const ListTile(
+                if (p == null) {
+                  return const ListTile(
                     title: Text('Saved progress'),
                     subtitle: Text('Loading…'),
                   );
                 }
-                 
+
                 return ListTile(
                   leading: const Icon(Icons.bookmark_outline),
                   title: const Text('Saved progress on this device'),
                   subtitle: Text(
                     '${p.completedGames} completed games · ${p.foundWordIds.length} unique words found',
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 36),
+            ListTile(
+              leading: const Icon(Icons.person_outline_rounded),
+              title: const Text('About Developer'),
+              subtitle: const Text('Meet the creator and support Word Hunt.'),
+              trailing: const Icon(Icons.chevron_left_rounded),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AboutDeveloperScreen(),
                   ),
                 );
               },
