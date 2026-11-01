@@ -38,6 +38,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   final _generator = PuzzleGenerator();
   final _validator = SelectionValidator();
+  final _wordDatabase = WordDatabase();
 
   Puzzle? _puzzle;
   String? _error;
@@ -78,7 +79,7 @@ class _GameScreenState extends State<GameScreen> {
             : null;
 
         _puzzle = _generator.generate(
-          catalog: WordDatabase.words,
+          catalog: _wordDatabase.getAllWords(),
           progress: progress,
           difficulty: widget.difficulty,
           mode: widget.mode,
@@ -165,6 +166,7 @@ class _GameScreenState extends State<GameScreen> {
       await _finish(puzzle);
     }
   }
+
   Future<void> _handleDragSelection(
     CellPosition start,
     CellPosition end,
@@ -338,10 +340,7 @@ class _GameScreenState extends State<GameScreen> {
               return SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    // यह ग्रिड को उपलब्ध पूरी वर्टिकल स्पेस (Expanded की हाइट) देता है
-                    minHeight: constraints.maxHeight,
-                  ),
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Center(
                     // अब यह पूरी तरह से सेंटर में काम करेगा
                     child: LetterGrid(

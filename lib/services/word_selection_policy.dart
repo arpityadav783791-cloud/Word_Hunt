@@ -36,7 +36,8 @@ class WordSelectionPolicy {
     if (candidates.length < config.wordCount) {
       throw InsufficientWordsException(
         'Only ${candidates.length} unused words are available for ${config.label}; '
-        '${config.wordCount} are needed. Add more words to the catalog. '
+        '${config.wordCount} are needed. '
+        'The imported offline vocabulary does not contain enough eligible unused words. '
         'Words will not repeat before 1,000 completed games.',
       );
     }
