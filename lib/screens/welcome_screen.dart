@@ -4,9 +4,9 @@ import '../models/active_game.dart';
 import '../models/puzzle.dart';
 import '../services/progress_service.dart';
 import '../services/theme_controller.dart';
-import 'difficulty_screen.dart';
 import 'game_screen.dart';
 import 'settings_screen.dart';
+import '../models/difficulty_config.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key, required this.progress, required this.theme});
@@ -60,17 +60,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     await _loadActiveGame();
   }
 
-  void _choose(GameMode mode) {
-    Navigator.push(
+  Future<void> _choose(GameMode mode) async {
+    final progress = await widget.progress.loadProgress();
+
+    if (!mounted) return;
+
+    final savedLevel = DifficultyLevel.values.firstWhere(
+      (level) => level.name == progress.preferredDifficulty,
+      orElse: () => DifficultyLevel.easy,
+    );
+
+    final difficulty = DifficultyConfig.forLevel(savedLevel);
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DifficultyScreen(
+        builder: (_) => GameScreen(
           progress: widget.progress,
           theme: widget.theme,
+          difficulty: difficulty,
           mode: mode,
         ),
       ),
-    ).then((_) => _loadActiveGame());
+    );
+
+    if (!mounted) return;
+    await _loadActiveGame();
   }
 
   @override

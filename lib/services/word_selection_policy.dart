@@ -6,13 +6,15 @@ import '../models/word_entry.dart';
 
 class InsufficientWordsException implements Exception {
   InsufficientWordsException(this.message);
+
   final String message;
+
   @override
   String toString() => message;
 }
 
 class WordSelectionPolicy {
-  static const repetitionThreshold = 1000;
+  static const repetitionCooldown = 1000;
 
   List<WordEntry> selectWords({
     required List<WordEntry> catalog,
@@ -20,8 +22,8 @@ class WordSelectionPolicy {
     required DifficultyConfig config,
     required Random random,
   }) {
-    final canRepeat = progress.completedGames >= repetitionThreshold;
     final unique = <String, WordEntry>{};
+
     for (final word in catalog) {
       final normalized = word.normalizedWord;
       if (normalized.length < config.minWordLength ||
@@ -29,18 +31,27 @@ class WordSelectionPolicy {
           !RegExp(r'^[a-z]+$').hasMatch(normalized)) {
         continue;
       }
-      if (!canRepeat && progress.foundWordIds.contains(word.id)) continue;
+
+      final usage = progress.wordHistory[word.id];
+
+      if (usage != null &&
+          progress.completedGames - usage.lastUsedGameNumber <
+              repetitionCooldown) {
+        continue;
+      }
+
       unique.putIfAbsent(word.id, () => word);
     }
+
     final candidates = unique.values.toList()..shuffle(random);
+
     if (candidates.length < config.wordCount) {
       throw InsufficientWordsException(
-        'Only ${candidates.length} unused words are available for ${config.label}; '
-        '${config.wordCount} are needed. '
-        'The imported offline vocabulary does not contain enough eligible unused words. '
-        'Words will not repeat before 1,000 completed games.',
+        'Only ${candidates.length} eligible words are available for '
+        '${config.label}; ${config.wordCount} are needed.',
       );
     }
+
     return candidates.take(config.wordCount).toList();
   }
 }

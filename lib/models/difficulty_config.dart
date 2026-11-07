@@ -18,8 +18,8 @@ class DifficultyConfig {
   static const easy = DifficultyConfig(
     level: DifficultyLevel.easy,
     label: 'Easy',
-    gridSize: 4,
-    wordCount: 4,
+    gridSize: 6,
+    wordCount: 6,
     minWordLength: 3,
     maxWordLength: 4,
     description: 'Short, familiar words in a small grid.',

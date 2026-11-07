@@ -19,16 +19,18 @@ class PuzzleGenerator {
 
   final WordSelectionPolicy _policy;
 
-  static const _all = [
-    _Direction(0, 1),
-    _Direction(0, -1),
-    _Direction(1, 0),
-    _Direction(-1, 0),
+  static const _horizontal = [_Direction(0, 1), _Direction(0, -1)];
+
+  static const _vertical = [_Direction(1, 0), _Direction(-1, 0)];
+
+  static const _diagonal = [
     _Direction(1, 1),
     _Direction(-1, -1),
     _Direction(1, -1),
     _Direction(-1, 1),
   ];
+
+  static const _all = [..._horizontal, ..._vertical, ..._diagonal];
 
   Puzzle generate({
     required List<WordEntry> catalog,
@@ -44,8 +46,6 @@ class PuzzleGenerator {
         : DateTime.now().microsecondsSinceEpoch;
 
     final random = Random(seed);
-
-    final directions = _all;
 
     for (var attempt = 0; attempt < 100; attempt++) {
       final words = _policy.selectWords(
@@ -72,28 +72,22 @@ class PuzzleGenerator {
 
       final placements = <String, List<CellPosition>>{};
 
-      final sorted = [...words]
-        ..sort(
-          (a, b) => b.normalizedWord.length.compareTo(a.normalizedWord.length),
-        );
+      final sorted = [...words]..shuffle(random);
 
-      var success = true;
+      sorted.sort(
+        (a, b) => b.normalizedWord.length.compareTo(a.normalizedWord.length),
+      );
 
-      for (final word in sorted) {
-        final path = _place(
-          word.normalizedWord.toUpperCase(),
-          grid,
-          directions,
-          random,
-        );
+      final directions = _balancedDirections(sorted.length, random);
 
-        if (path == null) {
-          success = false;
-          break;
-        }
-
-        placements[word.id] = path;
-      }
+      final success = _placeWords(
+        index: 0,
+        words: sorted,
+        directions: directions,
+        grid: grid,
+        placements: placements,
+        random: random,
+      );
 
       if (!success) continue;
 
@@ -122,56 +116,123 @@ class PuzzleGenerator {
 
     throw StateError(
       'Could not fit the selected words into a $size × $size grid '
-      'after 100 attempts. Try reducing the word count or word lengths.',
+      'after 100 attempts.',
     );
   }
 
-  List<CellPosition>? _place(
-    String word,
-    List<List<String?>> grid,
-    List<_Direction> directions,
-    Random random,
-  ) {
-    final size = grid.length;
+  List<_Direction> _balancedDirections(int wordCount, Random random) {
+    final directions = <_Direction>[];
 
-    if (word.length > size) return null;
+    if (wordCount == 4) {
+      final horizontal = [..._horizontal]..shuffle(random);
+      final vertical = [..._vertical]..shuffle(random);
+      final diagonal = [..._diagonal]..shuffle(random);
 
-    for (var attempt = 0; attempt < 1000; attempt++) {
-      final direction = directions[random.nextInt(directions.length)];
+      directions.add(horizontal.first);
+      directions.add(vertical.first);
+      directions.add(diagonal[0]);
+      directions.add(diagonal[1]);
+    } else {
+      // Use every direction at least once.
+      directions.addAll(_all);
 
-      final row = random.nextInt(size);
-      final column = random.nextInt(size);
-
-      final path = <CellPosition>[];
-      var fits = true;
-
-      for (var i = 0; i < word.length; i++) {
-        final r = row + direction.r * i;
-        final c = column + direction.c * i;
-
-        if (r < 0 ||
-            r >= size ||
-            c < 0 ||
-            c >= size ||
-            (grid[r][c] != null && grid[r][c] != word[i])) {
-          fits = false;
-          break;
-        }
-
-        path.add(CellPosition(r, c));
+      // Add extra directions randomly for larger difficulties.
+      while (directions.length < wordCount) {
+        directions.add(_all[random.nextInt(_all.length)]);
       }
-
-      if (!fits) continue;
-
-      for (var i = 0; i < word.length; i++) {
-        final cell = path[i];
-        grid[cell.row][cell.column] = word[i];
-      }
-
-      return path;
     }
 
-    return null;
+    directions.shuffle(random);
+    return directions;
+  }
+
+  bool _placeWords({
+    required int index,
+    required List<WordEntry> words,
+    required List<_Direction> directions,
+    required List<List<String?>> grid,
+    required Map<String, List<CellPosition>> placements,
+    required Random random,
+  }) {
+    if (index == words.length) return true;
+
+    final wordEntry = words[index];
+    final word = wordEntry.normalizedWord.toUpperCase();
+    final direction = directions[index];
+    final size = grid.length;
+
+    final startingPositions = List.generate(size * size, (i) => i)
+      ..shuffle(random);
+
+    for (final start in startingPositions) {
+      final row = start ~/ size;
+      final column = start % size;
+
+      final path = _buildPath(word, grid, direction, row, column);
+
+      if (path == null) continue;
+
+      final newlyFilled = <CellPosition>[];
+
+      for (var i = 0; i < path.length; i++) {
+        final cell = path[i];
+
+        if (grid[cell.row][cell.column] == null) {
+          grid[cell.row][cell.column] = word[i];
+          newlyFilled.add(cell);
+        }
+      }
+
+      placements[wordEntry.id] = path;
+
+      if (_placeWords(
+        index: index + 1,
+        words: words,
+        directions: directions,
+        grid: grid,
+        placements: placements,
+        random: random,
+      )) {
+        return true;
+      }
+
+      // Undo this placement and try another position.
+      placements.remove(wordEntry.id);
+
+      for (final cell in newlyFilled) {
+        grid[cell.row][cell.column] = null;
+      }
+    }
+
+    return false;
+  }
+
+  List<CellPosition>? _buildPath(
+    String word,
+    List<List<String?>> grid,
+    _Direction direction,
+    int row,
+    int column,
+  ) {
+    final size = grid.length;
+    final path = <CellPosition>[];
+
+    for (var i = 0; i < word.length; i++) {
+      final r = row + direction.r * i;
+      final c = column + direction.c * i;
+
+      if (r < 0 ||
+          r >= size ||
+          c < 0 ||
+          c >= size ||
+          (grid[r][c] != null && grid[r][c] != word[i])) {
+        return null;
+      }
+
+      path.add(CellPosition(r, c));
+    }
+
+    return path;
   }
 
   int _stableSeed(String input) {

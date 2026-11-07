@@ -77,6 +77,17 @@ class _GameScreenState extends State<GameScreen> {
         final dateKey = widget.mode == GameMode.dailyChallenge
             ? DailyChallengeService().dateKey()
             : null;
+        
+        if (widget.mode == GameMode.dailyChallenge) {
+          final dailyId = 'daily-$dateKey-${widget.difficulty.level.name}';
+
+          if (progress.completedPuzzleIds.contains(dailyId)) {
+            throw StateError(
+              'You have already completed today\'s challenge '
+              'at this difficulty.',
+            );
+          }
+        }
 
         _puzzle = _generator.generate(
           catalog: _wordDatabase.getAllWords(),
@@ -217,11 +228,10 @@ class _GameScreenState extends State<GameScreen> {
     _completing = true;
 
     // Record words only after the complete puzzle is finished.
-    for (final word in puzzle.targetWords) {
-      await widget.progress.recordFoundWord(word.id);
-    }
-
-    await widget.progress.completePuzzle(puzzle.id);
+    await widget.progress.completePuzzle(
+      puzzle.id,
+      wordIds: puzzle.targetWords.map((word) => word.id).toList(),
+    );
     await widget.progress.clearActiveGame();
 
     if (!mounted) return;
