@@ -15,6 +15,11 @@ import '../widgets/word_list.dart';
 import 'congratulations_screen.dart';
 import 'difficulty_screen.dart';
 
+import 'dart:async';
+
+import '../data/dictionary_cache.dart';
+import '../services/dictionary_api_service.dart';
+
 class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
@@ -39,6 +44,8 @@ class _GameScreenState extends State<GameScreen> {
   final _generator = PuzzleGenerator();
   final _validator = SelectionValidator();
   final _wordDatabase = WordDatabase();
+  final _dictionaryApi = DictionaryApiService();
+  final _dictionaryCache = DictionaryCache();
 
   Puzzle? _puzzle;
   String? _error;
@@ -53,6 +60,29 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _createPuzzle();
+  }
+
+  Future<void> _prefetchPuzzleWords(Puzzle puzzle) async {
+    await Future.wait(
+      puzzle.targetWords.map((word) async {
+        try {
+          // Already downloaded? No API request needed.
+          final cached = await _dictionaryCache.getEntry(word.normalizedWord);
+
+          if (cached != null) return;
+
+          // Fetch from API.
+          final entry = await _dictionaryApi.lookupWord(word.normalizedWord);
+
+          if (entry != null) {
+            await _dictionaryCache.saveEntry(entry);
+            debugPrint('Dictionary cached: ${word.word}');
+          }
+        } catch (e) {
+          debugPrint('Dictionary prefetch failed for ${word.word}: $e');
+        }
+      }),
+    );
   }
 
   Future<void> _createPuzzle() async {
@@ -70,6 +100,9 @@ class _GameScreenState extends State<GameScreen> {
 
       if (savedGame != null) {
         _puzzle = savedGame.puzzle;
+        unawaited(_prefetchPuzzleWords(_puzzle!));
+
+        
         _found.addAll(savedGame.foundWordIds);
       } else {
         final progress = await widget.progress.loadProgress();
@@ -77,7 +110,7 @@ class _GameScreenState extends State<GameScreen> {
         final dateKey = widget.mode == GameMode.dailyChallenge
             ? DailyChallengeService().dateKey()
             : null;
-        
+
         if (widget.mode == GameMode.dailyChallenge) {
           final dailyId = 'daily-$dateKey-${widget.difficulty.level.name}';
 
@@ -96,6 +129,9 @@ class _GameScreenState extends State<GameScreen> {
           mode: widget.mode,
           dateKey: dateKey,
         );
+
+        // start dictionary downloads without blocking gameplay.
+        unawaited(_prefetchPuzzleWords(_puzzle!));
 
         await _saveActiveGame();
       }

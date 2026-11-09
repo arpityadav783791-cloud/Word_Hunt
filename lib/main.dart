@@ -4,9 +4,15 @@ import 'data/shared_preferences_progress_repository.dart';
 import 'screens/welcome_screen.dart';
 import 'services/progress_service.dart';
 import 'services/theme_controller.dart';
+import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-void main() {
+void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   final progress = ProgressService(SharedPreferencesProgressRepository());
   runApp(WordHuntApp(progress: progress, theme: ThemeController(progress)));
 }
